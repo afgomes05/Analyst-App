@@ -14,6 +14,19 @@
   --line: #edf0f2;
   --blue: #6488c7;
 }
+.demo-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e1e8df;
+  background: #f0f5ee;
+  border-radius: 9px;
+  padding: 12px 15px;
+  margin-bottom: 18px;
+  font-size: 11px;
+  color: #75846e;
+  line-height: 1.6;
+}
 * {
   box-sizing: border-box;
 }

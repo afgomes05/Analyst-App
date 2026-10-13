@@ -23,6 +23,7 @@ export type MatchEvent = {
   createdAt: string;
 };
 export type Match = {
+  localDemo?: boolean;
   id: string;
   demo: boolean;
   home: string;

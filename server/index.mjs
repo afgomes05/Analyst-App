@@ -63,13 +63,11 @@ function mutate(handler) {
         match = before;
         const storageError = Boolean(error.code);
         if (storageError) console.error("Could not save match:", error.code);
-        res
-          .status(storageError ? 500 : 400)
-          .json({
-            error: storageError
-              ? "Não foi possível guardar o jogo."
-              : error.message,
-          });
+        res.status(storageError ? 500 : 400).json({
+          error: storageError
+            ? "Não foi possível guardar o jogo."
+            : error.message,
+        });
       }
     });
   };
@@ -111,12 +109,13 @@ if (process.env.NODE_ENV === "production") {
   app.use(vite.middlewares);
 }
 const port = Number(process.env.PORT || 3000);
-const server = app.listen(port, "0.0.0.0", (error) => {
+// Let Node bind both IPv6 and IPv4 where supported, including both localhost addresses.
+const server = app.listen(port, (error) => {
   if (error) {
     console.error(`Linha could not start on port ${port}: ${error.code}`);
     process.exit(1);
   }
-  console.log(`Linha server listening on port ${port}`);
+  console.log(`Linha server listening on port ${server.address().port}`);
 });
 let shuttingDown = false;
 async function shutdown() {

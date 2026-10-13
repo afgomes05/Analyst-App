@@ -25,6 +25,10 @@ npm start
 
 ## Ver a aplicação
 
+Se não tiveres acesso ao servidor da nuvem, podes experimentar uma demonstração autónoma: descarrega [linha-demo.html](docs/linha-demo.html) e abre o ficheiro no navegador. Não precisa de instalação, servidor ou acesso à Internet. Inclui o mesmo painel, registo de eventos, cronómetro e alternância entre Analista e Banco. Esta demonstração usa dados locais do navegador e não partilha eventos entre dispositivos; não está ligada aos dados do servidor. Os dados locais persistem quando o navegador permite armazenamento para ficheiros locais; caso contrário, duram apenas enquanto a página estiver aberta.
+
+Para gerar novamente esse ficheiro a partir do código atual, executa `npm run demo`.
+
 Para uma pré-visualização da versão compilada, executa `npm run build` e depois `npm run preview` na raiz do projeto. O servidor serve a interface e a API na porta 3000, em todas as interfaces de rede. Se a ferramenta de pré-visualização permitir escolher uma porta, seleciona 3000. Reinicia o servidor quando o ambiente for restaurado: os ficheiros são preservados, mas os processos ativos não.
 
 Um serviço de alojamento apenas de ficheiros estáticos não é suficiente para esta aplicação, porque o registo de eventos e a atualização em direto dependem do servidor Node.js. A vista do banco usa `/?view=bench` no mesmo servidor. Em desenvolvimento, se o proxy de pré-visualização usar um hostname externo, adiciona esse hostname específico à configuração `server.allowedHosts` do Vite; a versão compilada não depende do servidor de desenvolvimento do Vite.

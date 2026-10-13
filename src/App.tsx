@@ -469,19 +469,24 @@ export default function App() {
   }
   function saveEvent(event: FormEvent) {
     event.preventDefault();
-    void perform(async () => {
-      const result = await request("events", {
-        ...draft,
-        seconds: parseTime(eventTime),
-        playerNumber: playerNumber ? Number(playerNumber) : null,
-        x: point?.x ?? null,
-        y: point?.y ?? null,
-        outcome,
-        note,
-      });
-      setLastOwn(result.id);
-      setDraft(null);
-    }, "Evento registado. O banco já está atualizado.");
+    void perform(
+      async () => {
+        const result = await request("events", {
+          ...draft,
+          seconds: parseTime(eventTime),
+          playerNumber: playerNumber ? Number(playerNumber) : null,
+          x: point?.x ?? null,
+          y: point?.y ?? null,
+          outcome,
+          note,
+        });
+        setLastOwn(result.id);
+        setDraft(null);
+      },
+      match?.localDemo
+        ? "Evento registado nesta demonstração."
+        : "Evento registado. O banco já está atualizado.",
+    );
   }
   function exportEvents() {
     if (!match) return;
@@ -685,7 +690,11 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="/" aria-label="Linha, início">
+        <a
+          className="brand"
+          href={match.localDemo ? location.pathname : "/"}
+          aria-label="Linha, início"
+        >
           <span className="brand-symbol">
             <svg width="21" height="23" viewBox="0 0 24 26" fill="none">
               <path
@@ -777,7 +786,11 @@ export default function App() {
             role="status"
           >
             <span />
-            {connected ? "Ligação em direto" : "A reconectar…"}
+            {connected
+              ? match.localDemo
+                ? "Demonstração local"
+                : "Ligação em direto"
+              : "A reconectar…"}
           </div>
         </header>
         <div className="page-content">
@@ -830,6 +843,15 @@ export default function App() {
               </button>
             </div>
           </div>
+          {match.localDemo && (
+            <div className="demo-info" role="note">
+              <Shield size={16} />
+              <span>
+                Demonstração sem servidor. Os eventos ficam apenas neste
+                navegador; não são partilhados com outro dispositivo.
+              </span>
+            </div>
+          )}
           <section className="match-banner" aria-label="Resultado do jogo">
             <div className="match-meta">
               <span>
@@ -1090,7 +1112,7 @@ export default function App() {
                           O jogo em direto{" "}
                           <span className="live-pill">
                             <span />
-                            LIVE
+                            {match.localDemo ? "DEMO" : "LIVE"}
                           </span>
                         </h2>
                         <p>Cada ação, à medida que acontece.</p>
@@ -1318,7 +1340,9 @@ export default function App() {
             <span>
               <span className={`save-dot ${connected ? "" : "offline"}`} />
               {connected
-                ? "Eventos guardados neste servidor"
+                ? match.localDemo
+                  ? "Eventos apenas neste navegador"
+                  : "Eventos guardados neste servidor"
                 : "Sem ligação — registo indisponível"}
             </span>
             <span>
