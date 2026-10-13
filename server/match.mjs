@@ -9,6 +9,7 @@ export const eventTypes = [
   "red",
   "corner",
   "foul",
+  "substitution",
 ];
 export const players = {
   home: [
@@ -66,6 +67,11 @@ export function createMatch() {
     competition: "Liga Portugal",
     venue: "Estádio José Alvalade",
     round: "Jornada 12",
+    players: initialPlayers(),
+    clubs: {
+      home: { shortName: "SCP", color: "#3c8160" },
+      away: { shortName: "FCP", color: "#7497cc" },
+    },
     clock: { seconds: 1938, running: false, startedAt: null, period: 1 },
     events: sample.map(([type, team, number, seconds, x, y], index) => ({
       id: `demo-${index}`,
@@ -75,7 +81,7 @@ export function createMatch() {
       period: 1,
       x,
       y,
-      player: players[team].find((p) => p.number === number),
+      player: initialPlayers()[team].find((p) => p.number === number),
       outcome: type === "shot" ? (index % 2 === 0 ? "on" : "off") : null,
       note: "",
       createdAt: new Date().toISOString(),
@@ -126,7 +132,7 @@ export function updateClock(match, input, now = Date.now()) {
   return match.clock;
 }
 
-export function addEvent(match, input) {
+function buildEvent(match, input) {
   if (
     !eventTypes.includes(input.type) ||
     !["home", "away"].includes(input.team)
@@ -143,8 +149,11 @@ export function addEvent(match, input) {
   const player =
     input.playerNumber == null
       ? null
-      : players[input.team].find((p) => p.number === input.playerNumber);
-  if (input.playerNumber != null && !player)
+      : match.players[input.team].find((p) => p.number === input.playerNumber);
+  const chosenPlayer = input.playerId
+    ? match.players[input.team].find((p) => p.id === input.playerId)
+    : player;
+  if ((input.playerNumber != null || input.playerId) && !chosenPlayer)
     throw new Error("Jogador inválido.");
   for (const axis of ["x", "y"])
     if (
@@ -167,14 +176,256 @@ export function addEvent(match, input) {
     type: input.type,
     team: input.team,
     seconds: input.seconds,
-    period: match.clock.period,
-    player,
+    period: input.period ?? match.clock.period,
+    player: chosenPlayer ? { ...chosenPlayer } : null,
     x: input.x ?? null,
     y: input.y ?? null,
     outcome: input.type === "shot" ? (input.outcome ?? "on") : null,
     note: input.note?.trim() ?? "",
     createdAt: new Date().toISOString(),
   };
+  if (![1, 2].includes(event.period)) throw new Error("Parte inválida.");
+  if (input.type === "substitution") {
+    const outgoing = match.players[input.team].find(
+      (p) => p.id === input.playerOutId,
+    );
+    const incoming = match.players[input.team].find(
+      (p) => p.id === input.playerInId,
+    );
+    if (!outgoing || !incoming || outgoing.id === incoming.id)
+      throw new Error("Escolhe dois jogadores diferentes para a substituição.");
+    event.player = { ...outgoing };
+    event.playerIn = { ...incoming };
+  }
+  return event;
+}
+
+function initialPlayers() {
+  const benches = {
+    home: [
+      "Manuel Faria",
+      "Salvador Melo",
+      "Duarte Lima",
+      "José Matos",
+      "Henrique Nunes",
+      "Simão Carvalho",
+      "Rafael Freitas",
+    ],
+    away: [
+      "Alexandre Castro",
+      "Gabriel Azevedo",
+      "Bernardo Leal",
+      "Ivo Ribeiro",
+      "Paulo Tavares",
+      "Leonardo Cruz",
+      "Eduardo Monteiro",
+    ],
+  };
+  return Object.fromEntries(
+    ["home", "away"].map((team) => [
+      team,
+      [
+        ...players[team].map((p) => ({
+          ...p,
+          id: `${team}-${p.number}`,
+          starter: true,
+          position: p.number === 1 ? "GR" : "",
+        })),
+        ...benches[team].map((name, index) => ({
+          id: `${team}-${12 + index}`,
+          number: 12 + index,
+          name,
+          starter: false,
+          position: index === 0 ? "GR" : "",
+        })),
+      ],
+    ]),
+  );
+}
+
+export function normalizeMatch(match) {
+  const defaults = initialPlayers();
+  match.players ??= defaults;
+  match.clubs ??= {
+    home: { shortName: "SCP", color: "#3c8160" },
+    away: { shortName: "FCP", color: "#7497cc" },
+  };
+  for (const team of ["home", "away"]) {
+    match.players[team] ??= defaults[team];
+    for (const player of match.players[team]) {
+      player.id ??= `${team}-${player.number}`;
+      player.starter ??= player.number <= 11;
+      player.position ??= "";
+    }
+    for (const event of match.events.filter((e) => e.team === team)) {
+      for (const key of ["player", "playerIn"]) {
+        if (event[key])
+          event[key].id ??= match.players[team].find(
+            (p) => p.number === event[key].number,
+          )?.id;
+      }
+    }
+  }
+  return match;
+}
+
+export function lineupAt(
+  match,
+  team,
+  seconds = clockSeconds(match.clock),
+  excludeId = null,
+) {
+  const active = new Set(
+    match.players[team].filter((p) => p.starter).map((p) => p.id),
+  );
+  const changes = match.events
+    .filter(
+      (e) =>
+        e.team === team &&
+        ["substitution", "red"].includes(e.type) &&
+        e.seconds <= seconds &&
+        e.id !== excludeId,
+    )
+    .slice()
+    .sort(
+      (a, b) => a.seconds - b.seconds || a.createdAt.localeCompare(b.createdAt),
+    );
+  for (const event of changes) {
+    if (event.player) active.delete(event.player.id);
+    if (event.type === "substitution") active.add(event.playerIn.id);
+  }
+  return match.players[team].filter((p) => active.has(p.id));
+}
+
+function validateLineups(match) {
+  for (const team of ["home", "away"]) {
+    const active = new Set(
+      match.players[team].filter((p) => p.starter).map((p) => p.id),
+    );
+    const unavailable = new Set();
+    if (active.size > 11)
+      throw new Error("Cada equipa pode ter no máximo onze titulares.");
+    const changes = match.events
+      .filter(
+        (e) => e.team === team && ["substitution", "red"].includes(e.type),
+      )
+      .slice()
+      .sort(
+        (a, b) =>
+          a.seconds - b.seconds || a.createdAt.localeCompare(b.createdAt),
+      );
+    for (const event of changes) {
+      if (event.type === "red") {
+        if (event.player) {
+          active.delete(event.player.id);
+          unavailable.add(event.player.id);
+        }
+        continue;
+      }
+      if (
+        !active.has(event.player.id) ||
+        active.has(event.playerIn.id) ||
+        unavailable.has(event.playerIn.id)
+      )
+        throw new Error(
+          "A substituição é incompatível com o plantel nesse instante. Revê quem sai e quem entra.",
+        );
+      active.delete(event.player.id);
+      unavailable.add(event.player.id);
+      active.add(event.playerIn.id);
+    }
+  }
+}
+
+export function addEvent(match, input) {
+  normalizeMatch(match);
+  const event = buildEvent(match, input);
+  const candidate = { ...match, events: [...match.events, event] };
+  validateLineups(candidate);
   match.events.push(event);
   return event;
+}
+
+export function updateEvent(match, id, input) {
+  normalizeMatch(match);
+  const index = match.events.findIndex((e) => e.id === id);
+  if (index < 0) throw new Error("Evento não encontrado.");
+  const original = match.events[index];
+  const replacement = {
+    ...buildEvent(match, input),
+    id: original.id,
+    createdAt: original.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+  const events = match.events.map((e, i) => (i === index ? replacement : e));
+  validateLineups({ ...match, events });
+  match.events = events;
+  return replacement;
+}
+
+export function deleteEvent(match, id) {
+  if (!match.events.some((e) => e.id === id))
+    throw new Error("Evento não encontrado.");
+  const events = match.events.filter((e) => e.id !== id);
+  validateLineups({ ...match, events });
+  match.events = events;
+}
+
+function text(value, label, max = 80) {
+  if (typeof value !== "string" || !value.trim() || value.trim().length > max)
+    throw new Error(`${label} inválido.`);
+  return value.trim();
+}
+
+export function updateMatch(match, input) {
+  const replacement = structuredClone(match);
+  for (const key of ["home", "away", "competition", "venue", "round"])
+    if (key in input) replacement[key] = text(input[key], "Nome", 100);
+  if (input.clubs)
+    for (const team of ["home", "away"]) {
+      const club = input.clubs[team];
+      if (!club) continue;
+      if (!/^#[a-fA-F0-9]{6}$/.test(club.color))
+        throw new Error("Cor do clube inválida.");
+      replacement.clubs[team] = {
+        shortName: text(club.shortName, "Abreviatura", 5).toUpperCase(),
+        color: club.color,
+      };
+    }
+  Object.assign(match, replacement);
+  return match;
+}
+
+export function savePlayer(match, team, id, input) {
+  if (!["home", "away"].includes(team)) throw new Error("Equipa inválida.");
+  normalizeMatch(match);
+  if (id && !match.players[team].some((p) => p.id === id))
+    throw new Error("Jogador não encontrado.");
+  if (!Number.isInteger(input.number) || input.number < 1 || input.number > 99)
+    throw new Error("O número deve estar entre 1 e 99.");
+  if (match.players[team].some((p) => p.number === input.number && p.id !== id))
+    throw new Error("Esse número já pertence a outro jogador da equipa.");
+  if (typeof input.starter !== "boolean")
+    throw new Error("Indica se o jogador é titular.");
+  const player = {
+    id: id ?? randomUUID(),
+    name: text(input.name, "Nome do jogador"),
+    number: input.number,
+    starter: input.starter,
+    position:
+      typeof input.position === "string"
+        ? input.position.trim().slice(0, 20)
+        : "",
+  };
+  const roster = id
+    ? match.players[team].map((p) => (p.id === id ? player : p))
+    : [...match.players[team], player];
+  if (roster.length > 40)
+    throw new Error("O plantel pode ter até 40 jogadores.");
+  validateLineups({ ...match, players: { ...match.players, [team]: roster } });
+  match.players[team] = roster;
+  for (const event of match.events.filter((e) => e.team === team))
+    for (const key of ["player", "playerIn"])
+      if (event[key]?.id === player.id) event[key] = { ...player };
+  return player;
 }

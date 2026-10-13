@@ -7,8 +7,15 @@ export type EventType =
   | "yellow"
   | "red"
   | "corner"
-  | "foul";
-export type Player = { number: number; name: string };
+  | "foul"
+  | "substitution";
+export type Player = {
+  id: string;
+  number: number;
+  name: string;
+  starter: boolean;
+  position: string;
+};
 export type MatchEvent = {
   id: string;
   type: EventType;
@@ -16,6 +23,7 @@ export type MatchEvent = {
   seconds: number;
   period: number;
   player: Player | null;
+  playerIn?: Player;
   x: number | null;
   y: number | null;
   outcome: "on" | "off" | null;
@@ -33,6 +41,7 @@ export type Match = {
   round: string;
   events: MatchEvent[];
   players: Record<Team, Player[]>;
+  clubs: Record<Team, { shortName: string; color: string }>;
   serverNow: number;
   clock: {
     seconds: number;

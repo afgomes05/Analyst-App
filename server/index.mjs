@@ -2,7 +2,16 @@ import express from "express";
 import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createMatch, addEvent, updateClock, players } from "./match.mjs";
+import {
+  createMatch,
+  addEvent,
+  updateEvent,
+  deleteEvent,
+  updateClock,
+  normalizeMatch,
+  updateMatch,
+  savePlayer,
+} from "./match.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dataFile = resolve(
@@ -17,6 +26,7 @@ try {
   if (error.code !== "ENOENT") throw error;
   match = createMatch();
 }
+normalizeMatch(match);
 async function persist() {
   await writeFile(`${dataFile}.tmp`, JSON.stringify(match, null, 2));
   await rename(`${dataFile}.tmp`, dataFile);
@@ -26,7 +36,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "16kb" }));
 const clients = new Set();
-const snapshot = () => ({ ...match, players, serverNow: Date.now() });
+const snapshot = () => ({ ...match, serverNow: Date.now() });
 function broadcast() {
   const message = `data: ${JSON.stringify(snapshot())}\n\n`;
   for (const client of clients) client.write(message);
@@ -79,10 +89,26 @@ app.post(
 app.delete(
   "/api/events/:id",
   mutate((req) => {
-    const index = match.events.findIndex((event) => event.id === req.params.id);
-    if (index === -1) throw new Error("Evento não encontrado.");
-    match.events.splice(index, 1);
+    deleteEvent(match, req.params.id);
   }),
+);
+app.patch(
+  "/api/events/:id",
+  mutate((req) => updateEvent(match, req.params.id, req.body)),
+);
+app.patch(
+  "/api/match",
+  mutate((req) => {
+    updateMatch(match, req.body);
+  }),
+);
+app.post(
+  "/api/players/:team",
+  mutate((req) => savePlayer(match, req.params.team, null, req.body)),
+);
+app.patch(
+  "/api/players/:team/:id",
+  mutate((req) => savePlayer(match, req.params.team, req.params.id, req.body)),
 );
 app.post(
   "/api/clock",

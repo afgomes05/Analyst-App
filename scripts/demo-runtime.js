@@ -9,9 +9,9 @@ try {
   /* A sandboxed file can still run with in-memory state. */
 }
 const subscribers = new Set();
+normalizeMatch(localMatch);
 const localSnapshot = () => ({
   ...localMatch,
-  players,
   serverNow: Date.now(),
   localDemo: true,
 });
@@ -38,7 +38,11 @@ window.fetch = async (input, options = {}) => {
       result = { status: "ok" };
     else if (url.pathname === "/api/match" && method === "GET")
       result = localSnapshot();
-    else if (url.pathname === "/api/events" && method === "POST") {
+    else if (url.pathname === "/api/match" && method === "PATCH") {
+      updateMatch(localMatch, body);
+      saveAndNotify();
+      result = localSnapshot();
+    } else if (url.pathname === "/api/events" && method === "POST") {
       result = addEvent(localMatch, body);
       saveAndNotify();
     } else if (url.pathname === "/api/clock" && method === "POST") {
@@ -46,13 +50,24 @@ window.fetch = async (input, options = {}) => {
       saveAndNotify();
       result = localSnapshot();
     } else if (url.pathname.startsWith("/api/events/") && method === "DELETE") {
-      const index = localMatch.events.findIndex(
-        (event) => event.id === url.pathname.split("/").at(-1),
-      );
-      if (index < 0) throw new Error("Evento não encontrado.");
-      localMatch.events.splice(index, 1);
+      deleteEvent(localMatch, url.pathname.split("/").at(-1));
       saveAndNotify();
       result = localSnapshot();
+    } else if (url.pathname.startsWith("/api/events/") && method === "PATCH") {
+      result = updateEvent(localMatch, url.pathname.split("/").at(-1), body);
+      saveAndNotify();
+    } else if (
+      url.pathname.startsWith("/api/players/") &&
+      ["POST", "PATCH"].includes(method)
+    ) {
+      const parts = url.pathname.split("/");
+      result = savePlayer(
+        localMatch,
+        parts[3],
+        method === "PATCH" ? parts[4] : null,
+        body,
+      );
+      saveAndNotify();
     } else
       return Response.json(
         { error: "Endpoint não encontrado." },

@@ -35,26 +35,42 @@ Um serviço de alojamento apenas de ficheiros estáticos não é suficiente para
 
 ## Fluxo de jogo
 
-1. Escolhe a equipa e a ação. As teclas **1–8** também abrem o registo, quando não tens um controlo selecionado.
+1. Escolhe a equipa e a ação. As teclas **1–9** abrem as nove ações por predefinição. Em **Editar atalhos**, podes atribuir letras ou números, desativar ações e alterar o atalho do cronómetro; não são permitidos atalhos repetidos.
 2. O instante fica capturado ao escolher a ação. Podes corrigir esse tempo, escolher um jogador, selecionar a zona do campo e acrescentar uma nota.
 3. Guarda o evento. O resultado e as estatísticas atualizam-se em todas as vistas ligadas ao servidor.
 4. **Espaço** inicia ou pausa o cronómetro. O botão de ajuste permite acertar o tempo e passar à segunda parte, em pausa aos 45:00.
-5. **Anular último** remove o último evento que registaste nesta sessão. No histórico podes eliminar outros eventos, com confirmação.
-6. A exportação CSV inclui tempo, parte, equipa, jogador, localização, resultado do remate e notas.
+5. **Anular último** remove o último evento que registaste nesta sessão. No histórico podes adicionar, editar ou eliminar eventos. A edição também está disponível nos ícones de lápis do feed em direto. O tempo, a parte, o tipo de evento, a equipa, o jogador, a localização e a nota são editáveis.
+6. A exportação CSV inclui tempo, parte, equipa, jogador, entrada numa substituição, localização, resultado do remate e notas.
 
-O campo no formulário também aceita as setas do teclado; Enter seleciona o centro. O foco fica na janela de registo até a fechares.
+O campo no formulário também aceita as setas do teclado; Enter seleciona o centro. Os pontos registados mostram minuto, tipo, equipa, jogador e nota ao passar o rato, focar pelo teclado ou tocar. O foco fica na janela de registo até a fechares.
+
+O botão de lua/sol alterna entre os modos claro e escuro. O tema e os atalhos são guardados por navegador, separadamente dos dados do jogo. Atalhos de ação funcionam mesmo com um botão focado; o Espaço respeita a ativação nativa de botões. São desativados em campos de escrita, em janelas abertas e na vista Banco.
+
+### Gestão e substituições
+
+Em **Jogo e clubes**, podes editar os nomes dos clubes, abreviaturas, cores, competição, jornada/fase e estádio. No **Plantel**, podes adicionar ou editar jogadores, números, posições e a escalação inicial (titular ou suplente). Há onze titulares e sete suplentes por equipa na demonstração inicial. Os números são únicos em cada equipa. Identidades estáveis mantêm os eventos ligados ao jogador mesmo quando o seu nome ou número é alterado.
+
+A ação **Substituição** regista quem sai e quem entra. O plantel é calculado pela cronologia dos eventos no instante do cronómetro; corrigir ou anular uma substituição recalcula a escalação. Entradas em conflito com substituições posteriores são rejeitadas, sem alterar o registo. A versão atual usa substituições sem reentrada; jogadores substituídos ou expulsos não podem voltar a entrar. Cartões vermelhos identificados retiram o jogador do conjunto em campo.
+
+### Vista do banco
+
+A vista Banco dispensa a barra lateral e agrupa resultado, clubes e relógio num cabeçalho compacto. Estatísticas, campo, ritmo, seis eventos recentes e três substituições recentes ficam visíveis sem scroll em tablets 1024×768 e 768×1024, e em 1024×600. O botão **Plantéis e banco de suplentes** abre o plantel completo numa janela. Em telemóveis, os cartões passam a uma coluna com scroll.
+
+![Vista compacta do banco](docs/banco.png)
+
+![Modo escuro](docs/escuro.png)
 
 ## Dados e limites desta versão
 
 O jogo, os plantéis e os emblemas são de demonstração; os jogadores são fictícios. O cronómetro começa em pausa aos 32:18. Os eventos são guardados em `.local/match.json`, uma pasta ignorada pelo Git. `MATCH_DATA_DIR` permite selecionar uma pasta diferente. Os dados sobrevivem ao reinício do servidor. A persistência usa um ficheiro JSON e destina-se a uma única instância do servidor.
 
-Os golos contam como remates e remates à baliza. O gráfico de ritmo mostra o volume dos eventos efetivamente registados em blocos de cinco minutos, não uma estimativa de posse, pressão ou xG. As coordenadas são percentagens de um campo fixo: o Sporting ataca para a direita e o Porto para a esquerda na demonstração. Ainda não há inversão automática de campo entre partes.
+Os golos contam como remates e remates à baliza. O gráfico de ritmo mostra o volume dos eventos efetivamente registados em blocos de cinco minutos, não uma estimativa de posse, pressão ou xG. As coordenadas são percentagens de um campo fixo: a equipa da casa ataca para a direita e a visitante para a esquerda. Ainda não há inversão automática de campo entre partes.
 
 Esta versão não inclui autenticação nem permissões no servidor. A vista do banco é de leitura na interface; não constitui controlo de acesso à API. Não expor a aplicação a uma rede pública com dados reais antes de implementar autenticação, autorização e sessões separadas de jogo. Ainda não há modo offline: os controlos de escrita são desativados quando a ligação se perde, e o registo continua quando a ligação regressa.
 
 ## Próximas decisões de produto
 
-- Configuração de jogos, equipas e plantéis reais; substituições e mudanças de direção de ataque.
+- Sessões para vários jogos, importação de plantéis e mudanças de direção de ataque entre partes.
 - Acessos de analista e banco, com permissões no servidor e ligações por jogo.
 - Registo rápido de sequências, com seleção do jogador por número e filas de eventos.
 - Registo offline com sincronização e resolução de conflitos.
